@@ -20,7 +20,7 @@ function Shelf({ title, books, onMove }) {
                                 }}></div>
                                 <div className="book-shelf-changer">
                                     <select 
-                                    value={book.shelf}
+                                    value={book.shelf || "none"}
                                     onChange={(e) => onMove(book, e.target.value)}
                                     >
                                         <option value="none" disabled>
@@ -36,7 +36,7 @@ function Shelf({ title, books, onMove }) {
                                             Read
                                         </option>
                                         <option value="none">
-                                            none
+                                            None
                                         </option>
                                     </select>
                                 </div>

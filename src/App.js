@@ -1,5 +1,6 @@
 import "./App.css";
 import { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import * as BooksAPI from "./BooksAPI";
 import Shelf from "./Shelf";
 import SearchBar from "./SearchBar";
@@ -9,97 +10,82 @@ function App() {
   const [books, setBooks] = useState([]);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  const [showSearchPage, setShowSearchPage] = useState(false)
-
 
   useEffect(() => {
-    BooksAPI.getAll().then((books) => {
-      setBooks(books);
-    });
+    BooksAPI.getAll().then((books) => setBooks(books));
   }, []);
 
   const handleMoveBook = (book, newShelf) => {
     BooksAPI.update(book, newShelf);
-    setBooks((prevBooks) =>{
+    setBooks(prevBooks => {
       const exists = prevBooks.find(b => b.id === book.id);
-      if (exists) {
-        return prevBooks.map(b =>
-          b.id === book.id ? { ...b, shelf: newShelf} : b
-        )
-      } else {
-        return [ ...prevBooks, {...book, shelf: newShelf }]
-      }
+      if (exists) return prevBooks.map(b => b.id === book.id ? { ...b, shelf: newShelf } : b);
+      return [...prevBooks, { ...book, shelf: newShelf }];
     });
+    setSearchResults(prevResults =>
+      prevResults.map(b => b.id === book.id ? { ...b, shelf: newShelf } : b)
+    );
   };
 
-  const currentlyReading = books.filter(
-    (book) => book.shelf === "currentlyReading"
-  );
-  const wantToRead = books.filter(
-    (book) => book.shelf === "wantToRead"
-  );
-  const read = books.filter(
-    (book) => book.shelf === "read"
-  );
-
-    const handleQueryChange = (q) => {
-    setQuery(q)
-
+  const handleQueryChange = (q) => {
+    setQuery(q);
+  
     if (q.trim() === "") {
       setSearchResults([]);
       return;
     }
-
-    BooksAPI.search(q, 20)
-    .then((results) => {
+  
+    BooksAPI.search(q, 20).then((results) => {
       if (!Array.isArray(results)) {
-        setSearchResults([])
-        return
-      } const updatedResults = results.map((result) => {
-        const existing = books.find((b) => b.id === result.id)
-        return existing
-        ? { ...result, shelf: existing.shelf}
-        : { ...result, shelf: "none"};
-      })
-      setSearchResults(updatedResults)
-    })
-  }
+        setSearchResults([]);
+        return;
+      }
+  
+      const updatedResults = results
+      .filter(result => result.id) 
+      .map(result => {
+        const existingBook = books.find(b => b.id === result.id);
+        return { ...result, shelf: existingBook ? existingBook.shelf : "none" };
+      });
+  
+      setSearchResults(updatedResults);
+    });
+  };
 
+  const currentlyReading = books.filter(b => b.shelf === "currentlyReading");
+  const wantToRead = books.filter(b => b.shelf === "wantToRead");
+  const read = books.filter(b => b.shelf === "read");
 
   return (
-    <div className="app">
-      {showSearchPage ? (
-        <div className="search-books">
-          <div className="search-books-bar">
-            <a className="close-search" onClick={() => setShowSearchPage(false)}>
-              Close
-            </a>
-            <SearchBar query={query} onQueryChange={handleQueryChange} />
-          </div> 
-          <SearchResults books={searchResults} onMove={handleMoveBook} />
-        </div>
-      ): (
-        <div className="list-books">
-          <div className="list-books-title">
-            <h1>MyReads</h1>
+    <Router>
+      <Routes>
+        {/* Main page */}
+        <Route path="/" element={
+          <div className="list-books">
+            <div className="list-books-title"><h1>MyReads</h1></div>
+            <div className="list-books-content">
+              <Shelf title="Currently Reading" books={currentlyReading} onMove={handleMoveBook} />
+              <Shelf title="Want to Read" books={wantToRead} onMove={handleMoveBook} />
+              <Shelf title="Read" books={read} onMove={handleMoveBook} />
+            </div>
+            <div className="open-search">
+              <Link to="/search">Add a book</Link>
+            </div>
           </div>
-          <div className="list-books-content">
-            <Shelf title="Currently Reading" 
-              books={currentlyReading}
-              onMove={handleMoveBook} />
-              <Shelf title="Want to Read" 
-              books={wantToRead}
-              onMove={handleMoveBook} />
-              <Shelf title="Read" 
-              books={read}
-              onMove={handleMoveBook} />
+        } />
+
+        {/* Search page */}
+        <Route path="/search" element={
+          <div className="search-books">
+            <div className="search-books-bar">
+              <Link className="close-search" to="/">Close</Link>
+              <SearchBar query={query} onQueryChange={handleQueryChange} />
+            </div>
+            <SearchResults books={searchResults} onMove={handleMoveBook} />
           </div>
-          <div className="open-search">
-            <a onClick={() => setShowSearchPage(true)}>Add a book</a>
-          </div>
-        </div>
-      )}
-    </div>
+        } />
+      </Routes>
+    </Router>
   );
 }
 
